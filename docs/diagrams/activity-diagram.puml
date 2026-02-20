@@ -1,0 +1,80 @@
+@startuml activity-diagram
+title NerdLogger — Log Processing Activity Diagram
+
+skinparam activity {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #333
+  DiamondBackgroundColor #FFFACD
+  DiamondBorderColor #888
+}
+skinparam activityStartColor #333
+skinparam activityEndColor #333
+
+start
+
+:Client calls logger.debug/info/warning/error/critical;
+
+:Build LogEntity
+(message, level, tag, date,
+ fileName, functionName,
+ lineNumber, thread, extraInfo);
+
+:Take thread-safe snapshot
+of destinations list;
+
+fork
+  :ConsoleDestination.log(entity);
+fork again
+  :FileDestination.log(entity);
+fork again
+  :OSLogDestination.log(entity);
+end fork
+
+note right
+  Each destination runs
+  independently via its
+  own ExecutionMethod
+end note
+
+' ─── Per-destination processing ───
+group Per Destination (repeated for each) {
+
+  :executionMethod.perform;
+
+  :Evaluate filter chain;
+
+  if (any filter drops log?) then (yes)
+    :Discard — stop processing\nfor this destination;
+    stop
+  else (no)
+  endif
+
+  :Merge metadataProvider.metadata\ninto entity.extraInfo;
+
+  :encoder.encode(entity);
+
+  if (encoding succeeds?) then (no)
+    :Call onInternalLog(error);
+    stop
+  else (yes)
+  endif
+
+  if (destination type?) then (Console)
+    :print / debugPrint / NSLog;
+  elseif (File) then (File)
+    :Append string to file;
+    if (flushMode == .always?) then (yes)
+      :fsync file to disk;
+    else (no)
+    endif
+  else (OSLog)
+    :Map LogLevel to OSLogType;
+    :logger.log(level, message);
+  endif
+
+}
+
+stop
+
+@enduml

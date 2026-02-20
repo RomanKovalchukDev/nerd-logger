@@ -1,0 +1,96 @@
+@startuml sequence-diagram
+title NerdLogger — Logging Flow (Sequence Diagram)
+
+skinparam sequenceArrowThickness 1.5
+skinparam sequenceGroupBorderColor #888
+skinparam sequenceLifeLineBorderColor #555
+skinparam participant {
+  BackgroundColor White
+  BorderColor #555
+}
+
+actor "Client Code" as Client
+participant "NerdLogger" as Logger
+participant "DispatchQueue\n(concurrent)" as Queue
+participant "LogDestinationProtocol\n[Console / File / OSLog]" as Dest
+participant "LogFilterProtocol\n[0..*]" as Filter
+participant "LogMetadataProvider" as Meta
+participant "LogEncoderProtocol\n[Simple / JSON / CSV]" as Encoder
+participant "ExecutionMethod\n[sync / async]" as Exec
+
+== Logging Entry ==
+
+Client -> Logger : logger.debug(message, tag:, extraInfo:)
+note right of Client: Convenience method on\nLogProtocol extension
+
+Logger -> Logger : create LogEntity\n(logLevel, message, tag, date,\nfileName, functionName,\nlineNumber, thread, extraInfo)
+
+Logger -> Queue : queue.sync(flags: .barrier)\nsnapshot destinations
+
+Queue --> Logger : [LogDestinationProtocol]
+
+loop for each destination
+
+  Logger -> Exec : executionMethod.perform {
+
+  activate Exec
+
+  Exec -> Filter : shouldIgnoreLog(entity)
+
+  alt any filter returns true
+    Filter --> Exec : true (drop)
+    note right: Log is discarded\nfor this destination
+  else all filters pass
+    Filter --> Exec : false (pass)
+
+    Exec -> Meta : metadata [String: String]
+    Meta --> Exec : metadata dict
+
+    Exec -> Exec : merge metadata\ninto entity.extraInfo
+
+    Exec -> Encoder : encode(entity) throws -> String
+
+    alt encoding succeeds
+      Encoder --> Exec : formatted String
+      Exec -> Dest : write to output\n(print / file.write / logger.log)
+    else encoding throws
+      Encoder --> Exec : Error
+      Exec -> Logger : onInternalLog(error)
+    end
+  end
+
+  Exec --> Logger : }
+  deactivate Exec
+
+end
+
+== File Destination Setup (one-time) ==
+
+Client -> Dest : fileDestination.setup()
+activate Dest
+Dest -> Dest : validateFileURL()
+Dest -> Dest : validateFilePermission()
+Dest -> Dest : openFile()\n(create dirs + file if needed)
+Dest -> Dest : trimLogsIfNeeded() [async]
+deactivate Dest
+
+== Log Fetching (Read Path) ==
+
+Client -> "FileLogFetcher" as Fetcher : fetchLogs(filter:)
+activate Fetcher
+Fetcher -> Fetcher : read file content\nas UTF-8 String
+Fetcher -> "LogDecoderProtocol" as Decoder : splitContent(string) -> [String]
+Decoder --> Fetcher : [line]
+
+loop for each line
+  Fetcher -> Decoder : decode(line) -> LogEntity?
+  Decoder --> Fetcher : LogEntity?
+  alt entity passes filter
+    Fetcher -> Fetcher : append to results
+  end
+end
+
+Fetcher --> Client : [LogEntity]
+deactivate Fetcher
+
+@enduml

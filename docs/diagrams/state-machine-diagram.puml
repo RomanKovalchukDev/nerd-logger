@@ -1,0 +1,69 @@
+@startuml state-machine-diagram
+title NerdLogger — FileDestination State Machine
+
+skinparam state {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #333
+}
+
+[*] --> Uninitialized : FileDestination created
+
+Uninitialized --> SettingUp : setup() called
+
+state SettingUp {
+  [*] --> ValidatingURL
+  ValidatingURL --> ValidatingPermission : URL valid
+  ValidatingURL --> SetupError : invalid URL
+  ValidatingPermission --> OpeningFile : permission ok
+  ValidatingPermission --> SetupError : bad permission
+  OpeningFile --> InitialTrim : file opened
+  InitialTrim --> [*] : trim complete
+}
+
+SettingUp --> Ready : setup succeeded
+SettingUp --> SetupError : setup failed
+
+state Ready {
+  [*] --> Idle
+
+  Idle --> Writing : log(entity) received
+
+  state Writing {
+    [*] --> FilterCheck
+    FilterCheck --> Encoding : all filters pass
+    FilterCheck --> [*] : filtered out
+    Encoding --> Appending : encode success
+    Encoding --> [*] : encode error
+    Appending --> [*]
+  }
+
+  Writing --> FlushDecision : write done
+
+  state FlushDecision <<choice>>
+  FlushDecision --> Flushing : flushMode == .always
+  FlushDecision --> Idle : otherwise
+
+  Flushing --> Idle : fsync complete
+  Idle --> Flushing : flush() called (manual or timer)
+
+  Idle --> TrimCycle : trimLogsIfNeeded()
+
+  state TrimCycle {
+    [*] --> TrimInvalid
+    TrimInvalid --> TrimBySize : done
+    TrimBySize --> TrimByAge : done
+    TrimByAge --> [*]
+  }
+
+  TrimCycle --> Idle : trim complete
+}
+
+state SetupError {
+  [*] --> ErrorState
+  ErrorState : onInternalLog(error) called
+}
+
+Ready --> [*] : destination removed\nor app terminated
+
+@enduml

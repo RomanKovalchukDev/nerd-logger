@@ -1,0 +1,294 @@
+@startuml class-diagram
+title NerdLogger — Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #333
+}
+
+' ─────────────── Data Layer ───────────────
+package "Data" #FAFAFA {
+  struct LogEntity {
+    + logLevel: LogLevel
+    + message: String
+    + tag: String?
+    + date: Date
+    + functionName: String
+    + fileName: String
+    + lineNumber: Int
+    + thread: String
+    + extraInfo: [String: String]?
+  }
+
+  enum LogLevel {
+    debug
+    info
+    warning
+    error
+    critical
+  }
+
+  enum LogOption {
+    timestamp
+    level
+    tag
+    fileInfo
+    thread
+    otherInfo
+    message
+    --
+    {static} default: [LogOption]
+    {static} console: [LogOption]
+    {static} all: [LogOption]
+  }
+
+  enum ExecutionMethod {
+    synchronous(lock: NSRecursiveLock)
+    asynchronous(queue: DispatchQueue)
+    --
+    + perform(closure)
+  }
+
+  enum FlushMode {
+    always
+    manual
+    periodic(interval: TimeInterval)
+  }
+
+  struct LogEntityDTO {
+    + logLevel: LogLevelDTO
+    + message: String?
+    + tag: String?
+    + date: String?
+    + functionName: String?
+    + fileName: String?
+    + lineNumber: Int?
+    + thread: String?
+    + extraInfo: [String: String]?
+  }
+
+  enum LogLevelDTO {
+    debug = "DEBUG"
+    info = "INFO"
+    warning = "WARNING"
+    error = "ERROR"
+    critical = "CRITICAL"
+  }
+
+  LogEntityDTO --> LogLevelDTO
+  LogEntity --> LogLevel
+}
+
+' ─────────────── Protocols ───────────────
+package "Protocols" #F0F8FF {
+  interface LogProtocol {
+    + destinations: [LogDestinationProtocol]
+    + log(message, logLevel, date, tag, ...)
+    + addDestination(destination)
+    + removeDestinationWithID(id)
+    + removeAllDestinations()
+    + setupAllDestinations()
+    + flushAllDestinations()
+  }
+
+  interface LogDestinationProtocol {
+    + id: String
+    + filters: [LogFilterProtocol]
+    + encoder: LogEncoderProtocol
+    + metadataProvider: LogMetadataProvider?
+    + log(entity: LogEntity)
+  }
+
+  interface PersistedLogDestinationProtocol {
+    + setup()
+    + flush()
+  }
+
+  interface LogEncoderProtocol {
+    + encode(entity: LogEntity) throws -> String
+  }
+
+  interface LogDecoderProtocol {
+    + decode(string: String) throws -> LogEntity?
+    + splitContent(string: String) -> [String]
+  }
+
+  interface LogFilterProtocol {
+    + id: String
+    + shouldIgnoreLog(entity: LogEntity) -> Bool
+  }
+
+  interface LogFetcherProtocol {
+    + decoder: LogDecoderProtocol
+    + fetchLogs(filter?) throws -> [LogEntity]
+  }
+
+  interface LogMetadataProvider {
+    + metadata: [String: String]
+  }
+
+  PersistedLogDestinationProtocol --|> LogDestinationProtocol
+}
+
+' ─────────────── Logger ───────────────
+package "Logger" #FFF8DC {
+  class NerdLogger {
+    - _destinations: [LogDestinationProtocol]
+    - queue: DispatchQueue
+    + destinations: [LogDestinationProtocol]
+    + init(destinations, queue)
+    + log(message, logLevel, ...)
+    + addDestination(destination)
+    + removeDestinationWithID(id)
+    + removeAllDestinations()
+    + setupAllDestinations()
+    + flushAllDestinations()
+  }
+
+  NerdLogger ..|> LogProtocol
+}
+
+' ─────────────── Destinations ───────────────
+package "Destinations" #F0FFF0 {
+  class ConsoleDestination {
+    + id: String
+    + outputMethod: OutputMethod
+    + executionMethod: ExecutionMethod
+    + filters: [LogFilterProtocol]
+    + encoder: LogEncoderProtocol
+    + metadataProvider: LogMetadataProvider?
+    + log(entity: LogEntity)
+  }
+
+  class FileDestination {
+    + id: String
+    + containerURL: URL
+    + fileName: String
+    + flushMode: FlushMode
+    + executionMethod: ExecutionMethod
+    + filters: [LogFilterProtocol]
+    + encoder: LogEncoderProtocol
+    + metadataProvider: LogMetadataProvider?
+    + trimDecoder: LogDecoderProtocol?
+    + maxLogAge: TimeInterval?
+    + maxFileSize: Int?
+    - flushTimer: Timer?
+    + setup()
+    + log(entity: LogEntity)
+    + flush()
+    - trimLogsIfNeeded()
+  }
+
+  class OSLogDestination {
+    + id: String
+    + logger: Logger
+    + filters: [LogFilterProtocol]
+    + encoder: LogEncoderProtocol
+    + metadataProvider: LogMetadataProvider?
+    + log(entity: LogEntity)
+    - mapToOSLogType(level: LogLevel) -> OSLogType
+  }
+
+  ConsoleDestination ..|> LogDestinationProtocol
+  FileDestination ..|> PersistedLogDestinationProtocol
+  OSLogDestination ..|> LogDestinationProtocol
+}
+
+' ─────────────── Encoders ───────────────
+package "Encoders" #FFF0F5 {
+  class LogSimpleEncoder {
+    + dateFormatter: DateFormatter
+    + logOptions: [LogOption]
+    + shouldEscapeMessage: Bool
+    + encode(entity) throws -> String
+  }
+
+  class LogJSONEncoder {
+    + encoder: JSONEncoder
+    + logOptions: [LogOption]
+    + encode(entity) throws -> String
+  }
+
+  class LogCSVEncoder {
+    + delimiter: Character
+    + dateFormatter: DateFormatter
+    + logOptions: [LogOption]
+    + encode(entity) throws -> String
+  }
+
+  LogSimpleEncoder ..|> LogEncoderProtocol
+  LogJSONEncoder ..|> LogEncoderProtocol
+  LogCSVEncoder ..|> LogEncoderProtocol
+}
+
+' ─────────────── Decoders ───────────────
+package "Decoders" #F5F0FF {
+  class LogJSONDecoder {
+    + decoder: JSONDecoder
+    + decode(string) throws -> LogEntity?
+    + splitContent(string) -> [String]
+  }
+
+  class LogCSVDecoder {
+    + delimiter: Character
+    + dateFormatter: DateFormatter
+    + logOptions: [LogOption]
+    + decode(string) throws -> LogEntity?
+    + splitContent(string) -> [String]
+  }
+
+  LogJSONDecoder ..|> LogDecoderProtocol
+  LogCSVDecoder ..|> LogDecoderProtocol
+}
+
+' ─────────────── Filters ───────────────
+package "Filters" #FFFFF0 {
+  class LogSeverityFilter {
+    + id: String
+    + minLogLevel: LogLevel
+    + shouldIgnoreLog(entity) -> Bool
+  }
+
+  class LogTagFilter {
+    + id: String
+    + tags: [String]
+    + shouldIgnoreLog(entity) -> Bool
+  }
+
+  class LogClosureFilter {
+    + id: String
+    + onFilter: (LogEntity) -> Bool
+    + shouldIgnoreLog(entity) -> Bool
+  }
+
+  LogSeverityFilter ..|> LogFilterProtocol
+  LogTagFilter ..|> LogFilterProtocol
+  LogClosureFilter ..|> LogFilterProtocol
+}
+
+' ─────────────── Fetcher ───────────────
+package "Fetcher" #F0FFFF {
+  class FileLogFetcher {
+    + fileURL: URL
+    + decoder: LogDecoderProtocol
+    + fetchLogs(filter?) throws -> [LogEntity]
+  }
+
+  FileLogFetcher ..|> LogFetcherProtocol
+}
+
+' ─────────────── Relationships ───────────────
+NerdLogger "1" o-- "0..*" LogDestinationProtocol : destinations
+LogDestinationProtocol "1" o-- "0..*" LogFilterProtocol : filters
+LogDestinationProtocol "1" --> "1" LogEncoderProtocol : encoder
+LogDestinationProtocol "1" --> "0..1" LogMetadataProvider : metadataProvider
+LogFetcherProtocol "1" --> "1" LogDecoderProtocol : decoder
+FileDestination --> FlushMode
+FileDestination --> ExecutionMethod
+ConsoleDestination --> ExecutionMethod
+OSLogDestination --> ExecutionMethod
+LogSeverityFilter --> LogLevel
+
+@enduml

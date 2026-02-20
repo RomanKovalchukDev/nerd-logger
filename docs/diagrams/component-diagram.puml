@@ -1,0 +1,109 @@
+@startuml component-diagram
+title NerdLogger — Component Diagram
+
+skinparam component {
+  BackgroundColor White
+  BorderColor #555
+  ArrowColor #333
+}
+skinparam package {
+  BorderColor #888
+}
+
+package "Client Application" #EEEEEE {
+  [Client Code] as Client
+}
+
+package "NerdLogger" #DDEEFF {
+
+  package "Logger Core" #F0F8FF {
+    [NerdLogger] as Logger
+    interface "LogProtocol" as ILogger
+    Logger - ILogger
+  }
+
+  package "Destinations" #F0FFF0 {
+    [ConsoleDestination] as Console
+    [FileDestination] as File
+    [OSLogDestination] as OSLog
+    interface "LogDestinationProtocol" as IDest
+    interface "PersistedLogDestinationProtocol" as IPersisted
+    Console -- IDest
+    File -- IPersisted
+    OSLog -- IDest
+    IPersisted --|> IDest
+  }
+
+  package "Encoders" #FFF0F5 {
+    [LogSimpleEncoder] as SimpleEnc
+    [LogJSONEncoder] as JSONEnc
+    [LogCSVEncoder] as CSVEnc
+    interface "LogEncoderProtocol" as IEncoder
+    SimpleEnc -- IEncoder
+    JSONEnc -- IEncoder
+    CSVEnc -- IEncoder
+  }
+
+  package "Decoders" #F5F0FF {
+    [LogJSONDecoder] as JSONDec
+    [LogCSVDecoder] as CSVDec
+    interface "LogDecoderProtocol" as IDecoder
+    JSONDec -- IDecoder
+    CSVDec -- IDecoder
+  }
+
+  package "Filters" #FFFFF0 {
+    [LogSeverityFilter] as SevFilter
+    [LogTagFilter] as TagFilter
+    [LogClosureFilter] as ClosureFilter
+    interface "LogFilterProtocol" as IFilter
+    SevFilter -- IFilter
+    TagFilter -- IFilter
+    ClosureFilter -- IFilter
+  }
+
+  package "Fetcher" #F0FFFF {
+    [FileLogFetcher] as FetcherComp
+    interface "LogFetcherProtocol" as IFetcher
+    FetcherComp -- IFetcher
+  }
+
+  package "Metadata" #FFF8DC {
+    interface "LogMetadataProvider" as IMetadata
+  }
+}
+
+package "Platform" #F5F5F5 {
+  [Console / stdout] as Stdout
+  [File System] as FS
+  [OSLog / Console.app] as OSLogSys
+}
+
+' Client uses logger
+Client --> ILogger : log(message, level)
+
+' Logger fans out to destinations
+ILogger --> IDest : log(entity)
+
+' Destinations use encoders
+IDest --> IEncoder : encode(entity)
+
+' Destinations use filters
+IDest --> IFilter : shouldIgnoreLog(entity)
+
+' Destinations use metadata
+IDest --> IMetadata : metadata
+
+' Destinations write to platform
+Console --> Stdout
+File --> FS
+OSLog --> OSLogSys
+
+' Fetcher reads from file system using decoder
+IFetcher --> IDecoder : decode(line)
+FetcherComp --> FS : read file
+
+' File trimming uses decoder
+File --> IDecoder : trimDecoder
+
+@enduml

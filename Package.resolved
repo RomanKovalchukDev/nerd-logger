@@ -1,0 +1,15 @@
+{
+  "originHash" : "6c24caaf2e170962bacbdfa68af67969d1a8a4e079e39365b57106aa51c779f9",
+  "pins" : [
+    {
+      "identity" : "swiftlintplugin",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/lukepistrol/SwiftLintPlugin.git",
+      "state" : {
+        "revision" : "f69b412a765396d44dc9f4788a5b79919c1ca9e3",
+        "version" : "0.2.2"
+      }
+    }
+  ],
+  "version" : 3
+}

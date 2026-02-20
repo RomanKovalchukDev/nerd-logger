@@ -1,0 +1,10 @@
+configurations:
+  - sources:
+      - ./Sources/
+      - ./Tests/NerdLoggerTests/
+    templates:
+      - ../CodeGenerationTemplates/AutoMockable.stencil
+    output: ./Tests/NerdLoggerTests/Mocks/
+    args:
+      autoMockableTestableImports:
+        - NerdLogger

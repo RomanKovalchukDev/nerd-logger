@@ -405,8 +405,7 @@ struct EncoderTests {
             #expect(result.contains(lineNumberString))
         }
         
-        @Test(.disabled("Espaping issue or bad test data setup"))
-        func testEncodeWhenNewlinesInMessageShouldMaintainQuotes() throws {
+        @Test func testEncodeWhenNewlinesInMessageShouldMaintainQuotes() throws {
             // Arrange
             let messageWithNewline = "Line1\nLine2\nLine3"
             let quoteChar = "\""

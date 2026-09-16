@@ -18,6 +18,11 @@ public struct LogCSVDecoder: LogDecoderProtocol {
     
     // MARK: - Life cycle
     
+    /// Creates a CSV decoder configured to match the encoder that produced the input.
+    /// - Parameters:
+    ///   - delimiter: Field separator used in the source (typically `","` or `";"`).
+    ///   - dateFormatter: Formatter used to parse the timestamp column.
+    ///   - logOptions: Columns expected in the source, in the same order the encoder wrote them.
     public init(delimiter: String, dateFormatter: DateFormatter, logOptions: [LogOption]) {
         self.delimiter = delimiter
         self.dateFormatter = dateFormatter
@@ -113,7 +118,7 @@ public struct LogCSVDecoder: LogDecoderProtocol {
         )
     }
     
-    /// Splits CSV file content into individual log entry lines, handling quoted fields properly
+    /// Splits CSV file content into individual log entry lines, correctly handling quoted fields that may contain embedded newlines.
     public func splitContent(_ content: String) -> [String] {
         var lines: [String] = []
         var currentLine = ""

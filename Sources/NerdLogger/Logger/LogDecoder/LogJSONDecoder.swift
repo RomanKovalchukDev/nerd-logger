@@ -16,6 +16,7 @@ public struct LogJSONDecoder: LogDecoderProtocol {
     
     // MARK: - Life cycle
     
+    /// Creates a JSON decoder wrapping the provided Foundation `JSONDecoder`.
     public init(decoder: JSONDecoder) {
         self.decoder = decoder
     }

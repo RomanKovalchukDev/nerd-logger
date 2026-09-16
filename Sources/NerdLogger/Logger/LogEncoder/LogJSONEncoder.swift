@@ -17,6 +17,10 @@ public struct LogJSONEncoder: LogEncoderProtocol {
     
     // MARK: - Life cycle
     
+    /// Creates a JSON encoder with the underlying `JSONEncoder` and the fields it should include.
+    /// - Parameters:
+    ///   - encoder: The Foundation encoder used for serialization.
+    ///   - logOptions: The ``LogOption`` fields to retain on each entity before encoding.
     public init(encoder: JSONEncoder, logOptions: [LogOption]) {
         self.encoder = encoder
         self.logOptions = logOptions
@@ -25,6 +29,9 @@ public struct LogJSONEncoder: LogEncoderProtocol {
     // MARK: - Methods(public)
     
     /// Encodes a `LogEntity` into a JSON string.
+    ///
+    /// `JSONEncoder` automatically escapes control characters (\n, \r, \t, \\, \")
+    /// per the JSON spec. No manual escaping is needed, unlike CSV which preserves them literally.
     ///
     /// - Parameter entity: The `LogEntity` to encode.
     /// - Returns: A JSON string representation of the log entity.

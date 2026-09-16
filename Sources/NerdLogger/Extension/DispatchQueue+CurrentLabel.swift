@@ -8,6 +8,7 @@
 import Foundation
 
 extension DispatchQueue {
+    /// The label of the dispatch queue the caller is currently executing on, or an empty string when unavailable.
     class var currentLabel: String {
         String(validatingUTF8: __dispatch_queue_get_label(nil)) ?? ""
     }

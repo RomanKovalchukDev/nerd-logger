@@ -12,23 +12,11 @@ extension LogProtocol {
 }
 
 // sourcery: AutoMockable
-extension PersistedLogDestinationProtocol {
-}
-
-// sourcery: AutoMockable
-extension LogDestinationProtocol {
-}
-
-// sourcery: AutoMockable
 extension LogEncoderProtocol {
 }
 
 // sourcery: AutoMockable
 extension LogDecoderProtocol {
-}
-
-// sourcery: AutoMockable
-extension LogFilterProtocol {
 }
 
 // sourcery: AutoMockable
@@ -38,3 +26,11 @@ extension LogFetcherProtocol {
 // sourcery: AutoMockable
 extension LogMetadataProvider {
 }
+
+// NOTE: `LogFilterProtocol`, `LogDestinationProtocol`, and
+// `PersistedLogDestinationProtocol` all inherit from ``TypeNameProtocol``, which
+// declares both `static var typeName` and instance `var typeName`. Sourcery's
+// current stencil emits both as instance properties, producing an invalid
+// redeclaration in the generated mock. Existing tests avoid these mocks by
+// exercising real destinations and filters, so we intentionally exclude them
+// from AutoMockable until the shared stencil grows a `!static` guard.

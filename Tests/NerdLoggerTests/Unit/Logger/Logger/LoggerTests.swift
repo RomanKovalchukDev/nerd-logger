@@ -33,10 +33,10 @@ struct LoggerTests {
         }
     }
     
-    // MARK: - NerdLogger Tests
+    // MARK: - Logger Tests
     
-    @Suite("NerdLogger")
-    struct NerdLoggerTests {
+    @Suite("Logger")
+    struct LoggingTests {
         
         @Test func testInitWhenDestinationsProvidedShouldStoreCorrectly() {
             // Arrange
@@ -62,14 +62,13 @@ struct LoggerTests {
             
             // Act
             logger.addDestination(newDestination)
-            
-            // Small delay for async operation
-            Thread.sleep(forTimeInterval: 0.1)
-            
+
             // Assert
+            // `destinations` uses queue.sync, which drains prior async barrier
+            // writes — the read is deterministic without an explicit wait.
             #expect(logger.destinations.count == expectedCount)
         }
-        
+
         @Test func testAddDestinationWhenDuplicateIdShouldNotAdd() {
             // Arrange
             let destinationId = "duplicate"
@@ -81,14 +80,11 @@ struct LoggerTests {
             
             // Act
             logger.addDestination(destination2)
-            
-            // Small delay for async operation
-            Thread.sleep(forTimeInterval: 0.1)
-            
+
             // Assert
             #expect(logger.destinations.count == expectedCount)
         }
-        
+
         @Test func testRemoveDestinationWithIDWhenExistsShouldRemove() {
             // Arrange
             let destinationId = "toRemove"
@@ -99,14 +95,11 @@ struct LoggerTests {
             
             // Act
             logger.removeDestinationWithID(destinationId)
-            
-            // Small delay for async operation
-            Thread.sleep(forTimeInterval: 0.1)
-            
+
             // Assert
             #expect(logger.destinations.count == expectedCount)
         }
-        
+
         @Test func testRemoveDestinationWithIDWhenNotExistsShouldDoNothing() {
             // Arrange
             let destination = TestData.createTestDestination(id: "existing")
@@ -117,14 +110,11 @@ struct LoggerTests {
             
             // Act
             logger.removeDestinationWithID(nonExistentId)
-            
-            // Small delay for async operation
-            Thread.sleep(forTimeInterval: 0.1)
-            
+
             // Assert
             #expect(logger.destinations.count == expectedCount)
         }
-        
+
         @Test func testRemoveAllDestinationsShouldClearAll() {
             // Arrange
             let destination1 = TestData.createTestDestination(id: "dest1")
@@ -139,14 +129,11 @@ struct LoggerTests {
             
             // Act
             logger.removeAllDestinations()
-            
-            // Small delay for async operation
-            Thread.sleep(forTimeInterval: 0.1)
-            
+
             // Assert
             #expect(logger.destinations.count == expectedCount)
         }
-        
+
         @Test func testLogWhenCalledShouldNotThrow() {
             // Arrange
             let message = "Test log message"
@@ -284,11 +271,11 @@ struct LoggerTests {
                 logger.addDestination(destination)
                 _ = logger.destinations
             }
-            
-            // Small delay for async operations
-            Thread.sleep(forTimeInterval: 0.2)
-            
-            // Assert - should not crash, count should be reasonable
+
+            // Assert - should not crash, count should be reasonable.
+            // Each iteration's sync read drains its own barrier write;
+            // concurrentPerform waits for all iterations, so all writes have
+            // landed by the time we reach here.
             #expect(logger.destinations.count <= iterationCount)
         }
     }

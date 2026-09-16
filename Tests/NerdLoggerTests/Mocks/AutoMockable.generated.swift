@@ -13,29 +13,6 @@ import AppKit
 
 @testable import NerdLogger
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 public class LogDecoderProtocolMock: LogDecoderProtocol {
 
     public init() {}
@@ -68,41 +45,26 @@ public class LogDecoderProtocolMock: LogDecoderProtocol {
         }
     }
 
+    //MARK: - splitContent
 
-}
-public class LogDestinationProtocolMock: LogDestinationProtocol {
-
-    public init() {}
-
-    public var id: String {
-        get { return underlyingId }
-        set(value) { underlyingId = value }
+    public var splitContentContentStringStringCallsCount = 0
+    public var splitContentContentStringStringCalled: Bool {
+        return splitContentContentStringStringCallsCount > 0
     }
-    public var underlyingId: (String)!
-    public var filters: [any LogFilterProtocol] = []
-    public var encoder: any LogEncoderProtocol {
-        get { return underlyingEncoder }
-        set(value) { underlyingEncoder = value }
-    }
-    public var underlyingEncoder: (any LogEncoderProtocol)!
-    public var metadataProvider: (any LogMetadataProvider)?
+    public var splitContentContentStringStringReceivedContent: (String)?
+    public var splitContentContentStringStringReceivedInvocations: [(String)] = []
+    public var splitContentContentStringStringReturnValue: [String]!
+    public var splitContentContentStringStringClosure: ((String) -> [String])?
 
-
-    //MARK: - log
-
-    public var logEntityLogEntityVoidCallsCount = 0
-    public var logEntityLogEntityVoidCalled: Bool {
-        return logEntityLogEntityVoidCallsCount > 0
-    }
-    public var logEntityLogEntityVoidReceivedEntity: (LogEntity)?
-    public var logEntityLogEntityVoidReceivedInvocations: [(LogEntity)] = []
-    public var logEntityLogEntityVoidClosure: ((LogEntity) -> Void)?
-
-    public func log(_ entity: LogEntity) {
-        logEntityLogEntityVoidCallsCount += 1
-        logEntityLogEntityVoidReceivedEntity = entity
-        logEntityLogEntityVoidReceivedInvocations.append(entity)
-        logEntityLogEntityVoidClosure?(entity)
+    public func splitContent(_ content: String) -> [String] {
+        splitContentContentStringStringCallsCount += 1
+        splitContentContentStringStringReceivedContent = content
+        splitContentContentStringStringReceivedInvocations.append(content)
+        if let splitContentContentStringStringClosure = splitContentContentStringStringClosure {
+            return splitContentContentStringStringClosure(content)
+        } else {
+            return splitContentContentStringStringReturnValue
+        }
     }
 
 
@@ -175,46 +137,6 @@ public class LogFetcherProtocolMock: LogFetcherProtocol {
             return try fetchLogsWithFilterLogFetcherFilterLogEntityClosure(filter)
         } else {
             return fetchLogsWithFilterLogFetcherFilterLogEntityReturnValue
-        }
-    }
-
-
-}
-public class LogFilterProtocolMock: LogFilterProtocol {
-
-    public init() {}
-
-    public var id: String {
-        get { return underlyingId }
-        set(value) { underlyingId = value }
-    }
-    public var underlyingId: (String)!
-    public var typeName: String {
-        get { return underlyingTypeName }
-        set(value) { underlyingTypeName = value }
-    }
-    public var underlyingTypeName: (String)!
-
-
-    //MARK: - shouldIgnoreLog
-
-    public var shouldIgnoreLogEntityLogEntityBoolCallsCount = 0
-    public var shouldIgnoreLogEntityLogEntityBoolCalled: Bool {
-        return shouldIgnoreLogEntityLogEntityBoolCallsCount > 0
-    }
-    public var shouldIgnoreLogEntityLogEntityBoolReceivedEntity: (LogEntity)?
-    public var shouldIgnoreLogEntityLogEntityBoolReceivedInvocations: [(LogEntity)] = []
-    public var shouldIgnoreLogEntityLogEntityBoolReturnValue: Bool!
-    public var shouldIgnoreLogEntityLogEntityBoolClosure: ((LogEntity) -> Bool)?
-
-    public func shouldIgnoreLog(_ entity: LogEntity) -> Bool {
-        shouldIgnoreLogEntityLogEntityBoolCallsCount += 1
-        shouldIgnoreLogEntityLogEntityBoolReceivedEntity = entity
-        shouldIgnoreLogEntityLogEntityBoolReceivedInvocations.append(entity)
-        if let shouldIgnoreLogEntityLogEntityBoolClosure = shouldIgnoreLogEntityLogEntityBoolClosure {
-            return shouldIgnoreLogEntityLogEntityBoolClosure(entity)
-        } else {
-            return shouldIgnoreLogEntityLogEntityBoolReturnValue
         }
     }
 
@@ -324,69 +246,6 @@ public class LogProtocolMock: LogProtocol {
     public func flushAllDestinations() {
         flushAllDestinationsVoidCallsCount += 1
         flushAllDestinationsVoidClosure?()
-    }
-
-
-}
-public class PersistedLogDestinationProtocolMock: PersistedLogDestinationProtocol {
-
-    public init() {}
-
-    public var id: String {
-        get { return underlyingId }
-        set(value) { underlyingId = value }
-    }
-    public var underlyingId: (String)!
-    public var filters: [any LogFilterProtocol] = []
-    public var encoder: any LogEncoderProtocol {
-        get { return underlyingEncoder }
-        set(value) { underlyingEncoder = value }
-    }
-    public var underlyingEncoder: (any LogEncoderProtocol)!
-    public var metadataProvider: (any LogMetadataProvider)?
-
-
-    //MARK: - setup
-
-    public var setupVoidCallsCount = 0
-    public var setupVoidCalled: Bool {
-        return setupVoidCallsCount > 0
-    }
-    public var setupVoidClosure: (() -> Void)?
-
-    public func setup() {
-        setupVoidCallsCount += 1
-        setupVoidClosure?()
-    }
-
-    //MARK: - flush
-
-    public var flushVoidCallsCount = 0
-    public var flushVoidCalled: Bool {
-        return flushVoidCallsCount > 0
-    }
-    public var flushVoidClosure: (() -> Void)?
-
-    public func flush() {
-        flushVoidCallsCount += 1
-        flushVoidClosure?()
-    }
-
-    //MARK: - log
-
-    public var logEntityLogEntityVoidCallsCount = 0
-    public var logEntityLogEntityVoidCalled: Bool {
-        return logEntityLogEntityVoidCallsCount > 0
-    }
-    public var logEntityLogEntityVoidReceivedEntity: (LogEntity)?
-    public var logEntityLogEntityVoidReceivedInvocations: [(LogEntity)] = []
-    public var logEntityLogEntityVoidClosure: ((LogEntity) -> Void)?
-
-    public func log(_ entity: LogEntity) {
-        logEntityLogEntityVoidCallsCount += 1
-        logEntityLogEntityVoidReceivedEntity = entity
-        logEntityLogEntityVoidReceivedInvocations.append(entity)
-        logEntityLogEntityVoidClosure?(entity)
     }
 
 

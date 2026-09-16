@@ -8,6 +8,7 @@
 import Foundation
 
 extension Thread {
+    /// The kernel thread identifier of the current thread, obtained through `pthread_threadid_np`.
     class var threadId: UInt64 {
         var threadId: UInt64 = 0
         pthread_threadid_np(nil, &threadId)

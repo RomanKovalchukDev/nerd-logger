@@ -8,26 +8,44 @@
 import Foundation
 import os.log
 
+/// A ``LogDestinationProtocol`` implementation that forwards encoded records to Apple's unified logging system via `os.Logger`.
+///
+/// ``LogLevel`` values are mapped to `OSLogType` so that error and critical records are persisted
+/// by `logd`, while lower-severity records use `.default` to remain visible in Console.app without
+/// requiring per-subsystem `log config` overrides.
 public final class OSLogDestination: LogDestinationProtocol, TypeNameProtocol {
-    
+
     // MARK: - Properties(public)
-    
+
+    /// Unique identifier for this destination.
     public let id: String
+    /// Filters applied to each record before it is forwarded to `os.Logger`.
     public var filters: [any LogFilterProtocol]
+    /// Encoder that converts a ``LogEntity`` to the string passed to `os.Logger`.
     public var encoder: any LogEncoderProtocol
+    /// Optional provider that merges additional metadata into each record before encoding.
     public var metadataProvider: (any LogMetadataProvider)?
     
     // MARK: - Properties(private)
     
-    private let logger: Logger
+    private let logger: os.Logger
     private let executionMethod: ExecutionMethod
     private let onInternalLog: InternalLog?
     
     // MARK: - Life cycle
     
+    /// Creates an OS log destination.
+    /// - Parameters:
+    ///   - id: Unique identifier for this destination.
+    ///   - logger: The `os.Logger` instance that receives formatted records.
+    ///   - executionMethod: Synchronization strategy for concurrent callers.
+    ///   - filters: Filters applied before encoding. A record is dropped if any filter matches.
+    ///   - encoder: Encoder that converts a ``LogEntity`` to a string.
+    ///   - metadataProvider: Optional provider that appends extra key-value pairs to each record.
+    ///   - onInternalLog: Optional closure that receives diagnostic messages from the destination itself.
     public init(
         id: String,
-        logger: Logger,
+        logger: os.Logger,
         executionMethod: ExecutionMethod,
         filters: [any LogFilterProtocol],
         encoder: any LogEncoderProtocol,
@@ -44,7 +62,9 @@ public final class OSLogDestination: LogDestinationProtocol, TypeNameProtocol {
     }
     
     // MARK: - Methods(public)
-    
+
+    /// Encodes `entity` and forwards it to `os.Logger` at the appropriate `OSLogType`.
+    /// - Parameter entity: The log record to write to the unified logging system.
     public func log(_ entity: LogEntity) {
         executionMethod.perform { [weak self] in
             guard let self else {
@@ -78,16 +98,20 @@ public final class OSLogDestination: LogDestinationProtocol, TypeNameProtocol {
         let encodedMessage = try encoder.encode(entityToLog)
         let osLogType = mapLogLevelToOSLogType(entity.logLevel)
         
-        logger.log(level: osLogType, "\(encodedMessage)")
+        logger.log(level: osLogType, "\(encodedMessage, privacy: .public)")
     }
     
     private func mapLogLevelToOSLogType(_ level: LogLevel) -> OSLogType {
+        // `.debug` and `.info` are filtered out by Console.app's default stream and
+        // not persisted by `logd` unless explicitly enabled per-subsystem. Map them
+        // up to `.default` so the tunnel's info-level traces show without needing
+        // `log stream --info --debug` or a `log config` override.
         switch level {
         case .debug:
-            return .debug
+            return .default
 
         case .info:
-            return .info
+            return .default
 
         case .warning:
             return .default

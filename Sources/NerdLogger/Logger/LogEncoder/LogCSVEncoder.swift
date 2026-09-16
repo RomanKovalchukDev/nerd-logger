@@ -18,6 +18,11 @@ public struct LogCSVEncoder: LogEncoderProtocol {
     
     // MARK: - Life cycle
     
+    /// Creates a CSV encoder.
+    /// - Parameters:
+    ///   - delimiter: Field separator (typically `","` or `";"`).
+    ///   - dateFormatter: Formatter used to render the timestamp column.
+    ///   - logOptions: Columns to emit, in output order.
     public init(delimiter: String, dateFormatter: DateFormatter, logOptions: [LogOption]) {
         self.delimiter = delimiter
         self.dateFormatter = dateFormatter
@@ -80,12 +85,11 @@ public struct LogCSVEncoder: LogEncoderProtocol {
     
     // MARK: - Methods(private)
     
+    /// Escapes a CSV field per RFC 4180: wrap in double quotes and double any embedded quotes.
+    /// Newlines, tabs, and other characters are preserved literally inside quoted fields.
+    /// This differs from JSON, where control characters like \n must be escaped.
     private func escapeCSVField(_ field: String) -> String {
-        var escaped = field.replacingOccurrences(of: "\"", with: "\"\"")
-        // Escape newlines, carriage returns, and tabs
-        escaped = escaped.replacingOccurrences(of: "\n", with: "\\n")
-        escaped = escaped.replacingOccurrences(of: "\r", with: "\\r")
-        escaped = escaped.replacingOccurrences(of: "\t", with: "\\t")
+        let escaped = field.replacingOccurrences(of: "\"", with: "\"\"")
         return "\"\(escaped)\""
     }
     

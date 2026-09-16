@@ -19,6 +19,11 @@ public final class LogSimpleEncoder: LogEncoderProtocol {
     
     // MARK: - Life cycle
     
+    /// Creates a simple encoder.
+    /// - Parameters:
+    ///   - dateFormatter: Formatter used to render the timestamp component.
+    ///   - logOptions: Fields to include, in output order.
+    ///   - shouldEscapeMessage: When `true`, replaces `\n`, `\r`, and `\t` with their escape sequences so a record fits on one line.
     public init(dateFormatter: DateFormatter, logOptions: [LogOption], shouldEscapeMessage: Bool = true) {
         self.dateFormatter = dateFormatter
         self.logOptions = logOptions
@@ -27,6 +32,10 @@ public final class LogSimpleEncoder: LogEncoderProtocol {
     
     // MARK: - Methods(public)
     
+    /// Encodes `entity` as a single line of bracketed segments followed by the message.
+    /// - Parameter entity: The record to render.
+    /// - Returns: A one-line string representation of the record.
+    /// - Throws: This implementation does not throw; declared to satisfy ``LogEncoderProtocol``.
     public func encode(_ entity: LogEntity) throws -> String {
         var components: [String] = []
         

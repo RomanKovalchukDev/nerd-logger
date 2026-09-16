@@ -291,22 +291,25 @@ struct LogFetcherTests {
             try? FileManager.default.removeItem(at: fileURL)
         }
         
-        @Test func testFetchLogsWhenFileNotExistsShouldThrow() {
+        @Test func testFetchLogsWhenFileNotExistsShouldReturnEmpty() throws {
             // Arrange
             let containerURL = FileManager.default.temporaryDirectory
             let fileName = "non-existent.log"
             let fileURL = containerURL.appendingPathComponent(fileName)
+            try? FileManager.default.removeItem(at: fileURL)
             let decoder = LogCSVDecoder(
                 delimiter: ",",
                 dateFormatter: TestData.dateFormatter,
                 logOptions: [.level, .timestamp, .message]
             )
             let fetcher = FileLogFetcher(fileURL: fileURL, decoder: decoder)
-            
-            // Act & Assert
-            #expect(throws: Error.self) {
-                try fetcher.fetchLogs { _ in true }
-            }
+            let expectedCount = 0
+
+            // Act
+            let fetchedLogs = try fetcher.fetchLogs { _ in true }
+
+            // Assert
+            #expect(fetchedLogs.count == expectedCount)
         }
         
         @Test func testDecoderWhenSetShouldUpdate() throws {

@@ -7,8 +7,13 @@
 
 import Foundation
 
+/// Ergonomic call-site helpers that fill in call-site metadata and per-level shortcuts for ``LogProtocol``.
 public extension LogProtocol {
-    
+
+    /// Logs `message` at the given severity, capturing the current call site and timestamp automatically.
+    /// - Parameters:
+    ///   - message: The message body.
+    ///   - logLevel: Severity of the record.
     func log(
         _ message: String,
         logLevel: LogLevel
@@ -16,6 +21,7 @@ public extension LogProtocol {
         log(message, logLevel: logLevel, date: Date(), tag: nil, fileName: #file, functionName: #function, lineNumber: #line, extraInfo: [:])
     }
     
+    /// Logs `message` at ``LogLevel/debug`` severity.
     func debug(
         _ message: String,
         date: Date = Date(),
@@ -37,6 +43,7 @@ public extension LogProtocol {
         )
     }
     
+    /// Logs `message` at ``LogLevel/info`` severity.
     func info(
         _ message: String,
         date: Date = Date(),
@@ -58,6 +65,7 @@ public extension LogProtocol {
         )
     }
     
+    /// Logs `message` at ``LogLevel/warning`` severity.
     func warning(
         _ message: String,
         date: Date = Date(),
@@ -79,6 +87,7 @@ public extension LogProtocol {
         )
     }
     
+    /// Logs `message` at ``LogLevel/error`` severity.
     func error(
         _ message: String,
         date: Date = Date(),
@@ -100,6 +109,7 @@ public extension LogProtocol {
         )
     }
     
+    /// Logs `message` at ``LogLevel/critical`` severity.
     func critical(
         _ message: String,
         date: Date = Date(),

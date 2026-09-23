@@ -12,7 +12,9 @@ concurrency:
 jobs:
   test:
     name: Build and test (macOS)
-    runs-on: macos-15
+    # Unpinned because this package declares Swift tools version 6.2, which the
+    # macos-15 image does not ship. The other libraries pin macos-15.
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -43,10 +43,9 @@ struct LoggerTests {
             let destination1 = TestData.createTestDestination(id: "dest1")
             let destination2 = TestData.createTestDestination(id: "dest2")
             let destinations = [destination1, destination2]
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
             
             // Act
-            let logger = NerdLogger(destinations: destinations, queue: queue)
+            let logger = NerdLogger(destinations: destinations)
             
             // Assert
             #expect(logger.destinations.count == 2)
@@ -55,8 +54,7 @@ struct LoggerTests {
         @Test func testAddDestinationWhenNewDestinationShouldAdd() {
             // Arrange
             let initialDestination = TestData.createTestDestination(id: "initial")
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
-            let logger = NerdLogger(destinations: [initialDestination], queue: queue)
+            let logger = NerdLogger(destinations: [initialDestination])
             let newDestination = TestData.createTestDestination(id: "new")
             let expectedCount = 2
             
@@ -64,8 +62,6 @@ struct LoggerTests {
             logger.addDestination(newDestination)
 
             // Assert
-            // `destinations` uses queue.sync, which drains prior async barrier
-            // writes — the read is deterministic without an explicit wait.
             #expect(logger.destinations.count == expectedCount)
         }
 
@@ -73,8 +69,7 @@ struct LoggerTests {
             // Arrange
             let destinationId = "duplicate"
             let destination1 = TestData.createTestDestination(id: destinationId)
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
-            let logger = NerdLogger(destinations: [destination1], queue: queue)
+            let logger = NerdLogger(destinations: [destination1])
             let destination2 = TestData.createTestDestination(id: destinationId)
             let expectedCount = 1
             
@@ -89,8 +84,7 @@ struct LoggerTests {
             // Arrange
             let destinationId = "toRemove"
             let destination = TestData.createTestDestination(id: destinationId)
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
-            let logger = NerdLogger(destinations: [destination], queue: queue)
+            let logger = NerdLogger(destinations: [destination])
             let expectedCount = 0
             
             // Act
@@ -103,8 +97,7 @@ struct LoggerTests {
         @Test func testRemoveDestinationWithIDWhenNotExistsShouldDoNothing() {
             // Arrange
             let destination = TestData.createTestDestination(id: "existing")
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
-            let logger = NerdLogger(destinations: [destination], queue: queue)
+            let logger = NerdLogger(destinations: [destination])
             let nonExistentId = "nonExistent"
             let expectedCount = 1
             
@@ -120,11 +113,7 @@ struct LoggerTests {
             let destination1 = TestData.createTestDestination(id: "dest1")
             let destination2 = TestData.createTestDestination(id: "dest2")
             let destination3 = TestData.createTestDestination(id: "dest3")
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
-            let logger = NerdLogger(
-                destinations: [destination1, destination2, destination3],
-                queue: queue
-            )
+            let logger = NerdLogger(destinations: [destination1, destination2, destination3])
             let expectedCount = 0
             
             // Act
@@ -145,8 +134,7 @@ struct LoggerTests {
             let lineNumber: UInt = 42
             let extraInfo = ["key": "value"]
             let destination = TestData.createTestDestination()
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
-            let logger = NerdLogger(destinations: [destination], queue: queue)
+            let logger = NerdLogger(destinations: [destination])
             
             // Act & Assert - should not throw
             logger.log(
@@ -173,11 +161,7 @@ struct LoggerTests {
             let extraInfo: [String: String] = [:]
             let destination1 = TestData.createTestDestination(id: "dest1")
             let destination2 = TestData.createTestDestination(id: "dest2")
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
-            let logger = NerdLogger(
-                destinations: [destination1, destination2],
-                queue: queue
-            )
+            let logger = NerdLogger(destinations: [destination1, destination2])
             
             // Act & Assert - should not throw
             logger.log(
@@ -214,8 +198,7 @@ struct LoggerTests {
                 filters: [],
                 encoder: encoder
             )
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
-            let logger = NerdLogger(destinations: [fileDestination], queue: queue)
+            let logger = NerdLogger(destinations: [fileDestination])
             
             // Act & Assert - should not throw
             logger.setupAllDestinations()
@@ -247,8 +230,7 @@ struct LoggerTests {
                 filters: [],
                 encoder: encoder
             )
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
-            let logger = NerdLogger(destinations: [fileDestination], queue: queue)
+            let logger = NerdLogger(destinations: [fileDestination])
             
             // Act & Assert - should not throw
             logger.setupAllDestinations()
@@ -261,8 +243,7 @@ struct LoggerTests {
         
         @Test func testDestinationsWhenAccessedConcurrentlyShouldBeThreadSafe() {
             // Arrange
-            let queue = DispatchQueue(label: "test.queue", attributes: .concurrent)
-            let logger = NerdLogger(destinations: [], queue: queue)
+            let logger = NerdLogger(destinations: [])
             let iterationCount = 10
             
             // Act - concurrent access
@@ -272,11 +253,28 @@ struct LoggerTests {
                 _ = logger.destinations
             }
 
-            // Assert - should not crash, count should be reasonable.
-            // Each iteration's sync read drains its own barrier write;
-            // concurrentPerform waits for all iterations, so all writes have
-            // landed by the time we reach here.
+            // Assert
             #expect(logger.destinations.count <= iterationCount)
+        }
+        
+        @Test(.timeLimit(.minutes(1)))
+        func testDestinationsWhenReadFromSaturatedCooperativePoolShouldNotDeadlock() async {
+            // Arrange
+            let logger = NerdLogger(destinations: [])
+            let taskCount = ProcessInfo.processInfo.activeProcessorCount * 2
+            
+            // Act
+            await withTaskGroup(of: Void.self) { group in
+                for index in 0..<taskCount {
+                    group.addTask {
+                        logger.addDestination(TestData.createTestDestination(id: "dest-\(index)"))
+                        _ = logger.destinations
+                    }
+                }
+            }
+            
+            // Assert
+            #expect(logger.destinations.count <= taskCount)
         }
     }
 }

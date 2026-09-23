@@ -84,7 +84,7 @@ let fileDestination = FileDestination(
 )
 
 // Call setup() before logging to create the file and run initial trim
-let logger = NerdLogger(destinations: [fileDestination], queue: logQueue)
+let logger = NerdLogger(destinations: [fileDestination])
 logger.setupAllDestinations()
 ```
 

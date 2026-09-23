@@ -33,7 +33,7 @@ Add NerdLogger to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/nerd-logger.git", from: "1.0.0")
+    .package(url: "https://github.com/RomanKovalchukDev/nerd-logger.git", from: "2.0.0")
 ]
 ```
 
@@ -66,8 +66,7 @@ let logger = NerdLogger(
             filters: [],
             encoder: encoder
         )
-    ],
-    queue: DispatchQueue(label: "com.app.logger", attributes: .concurrent)
+    ]
 )
 
 logger.debug("App launched")

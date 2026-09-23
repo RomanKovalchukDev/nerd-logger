@@ -10,15 +10,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build and test
-    runs-on: macos-latest
+  test:
+    name: Build and test (macOS)
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode.app
 
       - name: Show environment
         run: |
@@ -32,4 +29,4 @@ jobs:
         run: swift test
 
       - name: Build with complete strict concurrency
-        run: swift build -Xswiftc -strict-concurrency=complete
+        run: swift build --build-tests -Xswiftc -strict-concurrency=complete

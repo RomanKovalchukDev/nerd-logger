@@ -9,35 +9,30 @@ import Foundation
 
 /// Default ``LogProtocol`` implementation that fans out records to a mutable set of destinations.
 ///
-/// Destination mutations are serialized through a barrier on the provided queue so registration
-/// and enumeration remain thread-safe. Each `log` call builds a ``LogEntity`` (including thread
-/// info) and forwards it to a snapshot of the destinations list.
+/// Destination mutations and reads are serialized through a lock, so registration and enumeration
+/// remain thread-safe without parking a thread until another thread drains a queue. Each `log` call
+/// builds a ``LogEntity`` (including thread info) and forwards it to a snapshot of the destinations
+/// list.
 public final class NerdLogger: LogProtocol {
     
     // MARK: - Properties(public)
     
     /// The currently registered destinations, in registration order.
     public var destinations: [any LogDestinationProtocol] {
-        queue.sync { _destinations }
+        lock.withLock { _destinations }
     }
     
     // MARK: - Properties(private)
     
     private var _destinations: [any LogDestinationProtocol] = []
-    private let queue: DispatchQueue
+    private let lock = NSLock()
 
     // MARK: - Life cycle
 
     /// Creates a log manager with an initial destination list.
-    /// - Parameters:
-    ///   - destinations: Destinations that should receive every subsequent log call.
-    ///   - queue: Serial or concurrent queue used to synchronize destination-list mutations.
-    public init(
-        destinations: [any LogDestinationProtocol],
-        queue: DispatchQueue
-    ) {
+    /// - Parameter destinations: Destinations that should receive every subsequent log call.
+    public init(destinations: [any LogDestinationProtocol]) {
         self._destinations = destinations
-        self.queue = queue
     }
     
     // MARK: - Methods(public)
@@ -45,31 +40,27 @@ public final class NerdLogger: LogProtocol {
     /// Registers `destination`, ignoring it silently if a destination with the same ``LogDestinationProtocol/id`` is already registered.
     /// - Parameter destination: The destination to add.
     public func addDestination(_ destination: any LogDestinationProtocol) {
-        queue.async(flags: .barrier) { [weak self] in
-            guard let self else {
+        lock.withLock {
+            guard !_destinations.contains(where: { $0.id == destination.id }) else {
                 return
             }
             
-            guard !self._destinations.contains(where: { $0.id == destination.id }) else {
-                return
-            }
-            
-            self._destinations.append(destination)
+            _destinations.append(destination)
         }
     }
     
     /// Removes the destination whose ``LogDestinationProtocol/id`` matches `id`, if present.
     /// - Parameter id: The identifier of the destination to remove.
     public func removeDestinationWithID(_ id: String) {
-        queue.async(flags: .barrier) { [weak self] in
-            self?._destinations.removeAll(where: { $0.id == id })
+        lock.withLock {
+            _destinations.removeAll(where: { $0.id == id })
         }
     }
     
     /// Removes every registered destination.
     public func removeAllDestinations() {
-        queue.async(flags: .barrier) { [weak self] in
-            self?._destinations.removeAll()
+        lock.withLock {
+            _destinations.removeAll()
         }
     }
     
@@ -108,7 +99,7 @@ public final class NerdLogger: LogProtocol {
             extraInfo: extraInfo
         )
         
-        let destinationsSnapshot = queue.sync { _destinations }
+        let destinationsSnapshot = lock.withLock { _destinations }
         
         for destination in destinationsSnapshot {
             destination.log(entity)
@@ -117,7 +108,7 @@ public final class NerdLogger: LogProtocol {
     
     /// Calls `setup()` on every registered ``PersistedLogDestinationProtocol`` destination.
     public func setupAllDestinations() {
-        let destinationsSnapshot = queue.sync { _destinations }
+        let destinationsSnapshot = lock.withLock { _destinations }
         
         for destination in destinationsSnapshot {
             if let persistedDestination = destination as? PersistedLogDestinationProtocol {
@@ -128,7 +119,7 @@ public final class NerdLogger: LogProtocol {
     
     /// Calls `flush()` on every registered ``PersistedLogDestinationProtocol`` destination.
     public func flushAllDestinations() {
-        let destinationsSnapshot = queue.sync { _destinations }
+        let destinationsSnapshot = lock.withLock { _destinations }
         
         for destination in destinationsSnapshot {
             if let persistedDestination = destination as? PersistedLogDestinationProtocol {

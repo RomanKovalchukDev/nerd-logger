@@ -1,6 +1,7 @@
 # NerdLogger
 
 [![Swift](https://img.shields.io/badge/Swift-5-orange?logo=swift)](https://swift.org)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://romankovalchukdev.github.io/nerd-logger/documentation/nerdlogger/)
 [![Platforms](https://img.shields.io/badge/Platforms-iOS%2017%2B%20%7C%20macOS%2014%2B-lightgrey)](https://developer.apple.com/swift/)
 [![SPM](https://img.shields.io/badge/Swift%20Package%20Manager-compatible-brightgreen)](https://swift.org/package-manager/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

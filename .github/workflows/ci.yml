@@ -10,15 +10,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build and test
+  test:
+    name: Build and test (macOS)
+    # Unpinned because this package declares Swift tools version 6.2, which the
+    # macos-15 image does not ship. The other libraries pin macos-15.
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode.app
+        uses: actions/checkout@v7
 
       - name: Show environment
         run: |
@@ -32,4 +31,4 @@ jobs:
         run: swift test
 
       - name: Build with complete strict concurrency
-        run: swift build -Xswiftc -strict-concurrency=complete
+        run: swift build --build-tests -Xswiftc -strict-concurrency=complete
